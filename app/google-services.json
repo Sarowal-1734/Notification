@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "610057330954",
+    "project_id": "notification-9a128",
+    "storage_bucket": "notification-9a128.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610057330954:android:deb61e35d972ed9f8c5af3",
+        "android_client_info": {
+          "package_name": "com.sarowal.notification"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "610057330954-da9h3l2db04uauj6pob0p4n338n04j7q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0r1_DnP2EtZgvP1FFGJ6LdhV-X6LnYOY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "610057330954-da9h3l2db04uauj6pob0p4n338n04j7q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
