@@ -4,29 +4,29 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.sarowal.notification.R;
+import com.sarowal.notification.databinding.FragmentLoginBinding;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class LoginFragment extends Fragment {
 
-    Button buttonLogin, buttonCreateAccount, buttonLogout;
-    EditText nameET, emailET, passwordET;
-    //String name, email, password;
+    private FragmentLoginBinding binding;
 
     FirebaseFirestore db = FirebaseFirestore.getInstance();
     FirebaseAuth mAuth = FirebaseAuth.getInstance();
@@ -39,30 +39,34 @@ public class LoginFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_login, container, false);
+        binding = FragmentLoginBinding.inflate(inflater, container, false);
 
-        buttonLogin = view.findViewById(R.id.button_login);
-        buttonCreateAccount = view.findViewById(R.id.button_create_account);
-        buttonLogout = view.findViewById(R.id.button_logout);
-        nameET = (EditText) view.findViewById(R.id.editTextName);
-        emailET = (EditText) view.findViewById(R.id.editTextEmail);
-        passwordET = (EditText) view.findViewById(R.id.editTextPassword);
+        if (mAuth.getCurrentUser() != null) {
+            db.collection("users").document(mAuth.getCurrentUser().getUid())
+                    .get()
+                    .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                        @Override
+                        public void onSuccess(DocumentSnapshot documentSnapshot) {
+                            binding.textViewUsername.setText("Logged In: " + documentSnapshot.get("userName"));
+                        }
+                    });
+        }
 
-        buttonLogin.setOnClickListener(new View.OnClickListener() {
+        binding.buttonLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                login(emailET.getText().toString(), passwordET.getText().toString());
+                login(binding.editTextEmail.getText().toString(), binding.editTextPassword.getText().toString());
             }
         });
 
-        buttonCreateAccount.setOnClickListener(new View.OnClickListener() {
+        binding.buttonCreateAccount.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                createAccount(emailET.getText().toString(), passwordET.getText().toString());
+                createAccount(binding.editTextEmail.getText().toString(), binding.editTextPassword.getText().toString());
             }
         });
 
-        buttonLogout.setOnClickListener(new View.OnClickListener() {
+        binding.buttonLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mAuth.getCurrentUser() != null) {
@@ -74,7 +78,7 @@ public class LoginFragment extends Fragment {
             }
         });
 
-        return view;
+        return binding.getRoot();
     }
 
     private void createAccount(String email, String password) {
@@ -90,15 +94,28 @@ public class LoginFragment extends Fragment {
     private void storeDataToFireStore() {
         // Create a new user with a first and last name
         Map<String, Object> user = new HashMap<>();
-        user.put("Username", nameET.getText().toString());
-        user.put("email", emailET.getText().toString());
-        user.put("password", passwordET.getText().toString());
+        user.put("userId", mAuth.getCurrentUser().getUid());
+        user.put("userName", binding.editTextName.getText().toString());
+        user.put("email", binding.editTextEmail.getText().toString());
+        user.put("password", binding.editTextPassword.getText().toString());
+        // For sending notification to a particular user get the user token
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(new OnCompleteListener<String>() {
+                    @Override
+                    public void onComplete(@NonNull Task<String> task) {
+                        if (task.isSuccessful()) {
+                            // Get new FCM registration token
+                            user.put("userToken", task.getResult());
+                        }
+                    }
+                });
         // Add a new document with a generated ID
         db.collection("users")
-                .add(user)
-                .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+                .document(mAuth.getCurrentUser().getUid())
+                .set(user)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
-                    public void onSuccess(DocumentReference documentReference) {
+                    public void onSuccess(Void unused) {
                         Toast.makeText(getActivity(), "Account Successfully Created!", Toast.LENGTH_SHORT).show();
                         getParentFragmentManager().beginTransaction()
                                 .replace(R.id.fragment_container, new HomeFragment(), "Home")
@@ -119,6 +136,16 @@ public class LoginFragment extends Fragment {
                     @Override
                     public void onSuccess(AuthResult authResult) {
                         Toast.makeText(getActivity(), "Login Success!", Toast.LENGTH_SHORT).show();
+                        FirebaseMessaging.getInstance().getToken()
+                                .addOnCompleteListener(new OnCompleteListener<String>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<String> task) {
+                                        if (task.isSuccessful()) {
+                                            db.collection("users").document(mAuth.getCurrentUser().getUid())
+                                                    .update("userToken", task.getResult());
+                                        }
+                                    }
+                                });
                         getParentFragmentManager().beginTransaction()
                                 .replace(R.id.fragment_container, new HomeFragment(), "Home")
                                 .commit();
